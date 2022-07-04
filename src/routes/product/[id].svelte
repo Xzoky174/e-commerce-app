@@ -1,10 +1,12 @@
 <script>
 	import { page } from '$app/stores';
+	import { supabase } from '$lib/external/supabaseClient';
+	import { onDestroy, onMount } from 'svelte';
+
 	import Loader from '$lib/components/loader.svelte';
 	import Notification from '$lib/components/notification.svelte';
-	import { supabase } from '$lib/external/supabaseClient';
 
-	import { onDestroy, onMount } from 'svelte';
+	const id = $page.params.id;
 
 	let error = '';
 	let loading = true;
@@ -34,7 +36,19 @@
 	 */
 	let imageSrc;
 
-	const id = $page.params.id;
+	/**
+	 * @type {import("@supabase/realtime-js").RealtimeSubscription | null}
+	 */
+	let profileSubscription;
+	let addingToCart = false;
+	let removingFromCart = false;
+
+	let addedToCart = false;
+
+	/**
+	 * @type {import("@supabase/gotrue-js").User | null}
+	 */
+	let user;
 
 	async function loadUsername() {
 		if (!productInfo || !productInfo.seller) return;
@@ -74,7 +88,24 @@
 		imageSrc = URL.createObjectURL(data);
 	}
 
+	async function checkIfInCart() {
+		const {
+			data,
+			error: _error,
+			status
+		} = await supabase.from('profiles').select('cart').eq('id', user?.id).single();
+
+		if (_error) {
+			error = `${status} ${_error.message}`;
+			return;
+		}
+		addedToCart = data.cart ? data.cart.includes(id) : false;
+	}
+
 	onMount(async () => {
+		supabase.auth.user();
+		user = supabase.auth.user();
+
 		const {
 			data: productData,
 			error: _error,
@@ -95,6 +126,7 @@
 
 			return;
 		} else {
+			checkIfInCart();
 			productInfo = productData;
 			loadImage();
 			loadUsername();
@@ -114,10 +146,50 @@
 					deleted = true;
 				})
 				.subscribe();
+
+			profileSubscription = supabase
+				.from(`profiles:id=eq.${user?.id}`)
+				.on('UPDATE', (payload) => {
+					addedToCart = payload.new.cart ? payload.new.cart.includes(id) : false;
+				})
+				.subscribe();
 		}
 	});
 
-	onDestroy(() => productSubscription?.unsubscribe());
+	onDestroy(() => {
+		productSubscription?.unsubscribe();
+		profileSubscription?.unsubscribe();
+	});
+
+	async function addCart() {
+		if (addedToCart) {
+			removingFromCart = true;
+
+			const { error: _error } = await supabase.rpc('remove_array', {
+				id: user?.id,
+				old_element: id
+			});
+
+			removingFromCart = false;
+			if (_error) {
+				error = `${_error.message}`;
+				return;
+			}
+		} else {
+			addingToCart = true;
+
+			const { error: _error } = await supabase.rpc('append_array', {
+				id: user?.id,
+				new_element: id
+			});
+
+			addingToCart = false;
+			if (_error) {
+				error = `${_error.message}`;
+				return;
+			}
+		}
+	}
 </script>
 
 <svelte:head>
@@ -137,15 +209,16 @@
 			{#if loadingImage}
 				<Loader size={30} center={false} />
 			{:else}
-				<img src={imageSrc} alt={productInfo?.title} />
+				<img class="product-image" src={imageSrc} alt={productInfo?.title} />
 			{/if}
 		</div>
 
 		<div class="product-info">
 			<h1 class="product-title">{productInfo?.title}</h1>
 			<p class="product-price">${productInfo?.price}</p>
+			<p>Current Stock: {productInfo?.stock}</p>
 
-			<p>
+			<p class="seller">
 				Seller:
 				{#if loadingUsername}
 					<span class="loader-container"><Loader size={30} center={false} /></span>
@@ -153,6 +226,22 @@
 					<b>{username}</b>
 				{/if}
 			</p>
+
+			<button
+				on:click={addCart}
+				class={addedToCart ? 'remove-cart' : 'add-cart'}
+				disabled={addingToCart || removingFromCart}
+			>
+				{#if addingToCart}
+					Adding to Cart..
+				{:else if removingFromCart}
+					Removing from Cart..
+				{:else if addedToCart}
+					Remove from Cart
+				{:else}
+					Add to Cart
+				{/if}
+			</button>
 		</div>
 	</div>
 {/if}
@@ -180,5 +269,49 @@
 	}
 	.loader-container {
 		display: inline-block;
+	}
+	.product-image {
+		max-width: 300px;
+	}
+	.seller {
+		margin-bottom: 24px;
+	}
+	.add-cart {
+		margin-top: 12px;
+		background-color: #fff;
+		border: 1px solid var(--secondary-color);
+		border-radius: 4px;
+		padding: 6px 12px;
+		cursor: pointer;
+		color: #000;
+		transition: 0.25s;
+	}
+	.add-cart:hover {
+		background-color: var(--secondary-color);
+		color: #fff;
+	}
+	.add-cart:disabled,
+	.add-cart[disabled] {
+		cursor: default;
+		background-color: var(--secondary-color);
+		color: #fff;
+		opacity: 0.5;
+	}
+	.remove-cart {
+		margin-top: 12px;
+		border: 0;
+		background-color: var(--secondary-color);
+		border-radius: 4px;
+		padding: 6px 12px;
+		cursor: pointer;
+		color: #fff;
+		transition: 0.25s;
+	}
+	.remove-cart:hover {
+		opacity: 0.8;
+	}
+	.remove-cart:disabled,
+	.remove-cart[disabled] {
+		opacity: 0.5;
 	}
 </style>
