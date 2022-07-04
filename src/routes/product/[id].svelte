@@ -14,11 +14,11 @@
 	 * @type {import("@supabase/realtime-js").RealtimeSubscription | null}
 	 */
 	let productSubscription;
-
 	/**
-	 * @type {{title: string, price: number, stock: number, seller: string} | null}
+	 * @type {{title: string, price: number, stock: number, seller: string, picture_url: string} | null}
 	 */
 	let productInfo;
+
 	let updated = false;
 	let deleted = false;
 
@@ -28,14 +28,62 @@
 	 */
 	let username;
 
+	let loadingImage = false;
+	/**
+	 * @type {string | null}
+	 */
+	let imageSrc;
+
 	const id = $page.params.id;
+
+	async function loadUsername() {
+		if (!productInfo || !productInfo.seller) return;
+		loadingUsername = true;
+
+		const {
+			data: userData,
+			error: _error,
+			status
+		} = await supabase.from('profiles').select('username').eq('id', productInfo.seller).single();
+		if (_error) {
+			error = `${status} ${_error.message}`;
+			return;
+		}
+
+		username = userData.username;
+		loadingUsername = false;
+	}
+
+	async function loadImage() {
+		if (!productInfo || !productInfo.picture_url) return;
+		loadingImage = true;
+
+		const { data, error: _error } = await supabase.storage
+			.from('product-images')
+			.download(productInfo.picture_url);
+
+		loadingImage = false;
+		if (_error) {
+			error = `${_error.message}`;
+			return;
+		}
+		if (!data) {
+			error = 'Oops. Something Went Wrong!';
+			return;
+		}
+		imageSrc = URL.createObjectURL(data);
+	}
 
 	onMount(async () => {
 		const {
 			data: productData,
 			error: _error,
 			status
-		} = await supabase.from('products').select('title, price, stock, seller').eq('id', id).single();
+		} = await supabase
+			.from('products')
+			.select('title, price, stock, seller, picture_url')
+			.eq('id', id)
+			.single();
 
 		loading = false;
 		if (_error) {
@@ -48,20 +96,8 @@
 			return;
 		} else {
 			productInfo = productData;
-			loadingUsername = true;
-
-			const {
-				data: userData,
-				error: _error,
-				status
-			} = await supabase.from('profiles').select('username').eq('id', productData.seller).single();
-			if (_error) {
-				error = `${status} ${_error.message}`;
-				return;
-			}
-
-			username = userData.username;
-			loadingUsername = false;
+			loadImage();
+			loadUsername();
 
 			productSubscription = supabase
 				.from(`products:id=eq.${id}`)
@@ -97,13 +133,27 @@
 	</div>
 {:else}
 	<div class="product-container">
-		<h1>{productInfo?.title}</h1>
-		<p>${productInfo?.price}</p>
-		{#if loadingUsername}
-			<Loader size={20} center={false} />
-		{:else}
-			<p>{username}</p>
-		{/if}
+		<div class="product-img">
+			{#if loadingImage}
+				<Loader size={30} center={false} />
+			{:else}
+				<img src={imageSrc} alt={productInfo?.title} />
+			{/if}
+		</div>
+
+		<div class="product-info">
+			<h1 class="product-title">{productInfo?.title}</h1>
+			<p class="product-price">${productInfo?.price}</p>
+
+			<p>
+				Seller:
+				{#if loadingUsername}
+					<span class="loader-container"><Loader size={30} center={false} /></span>
+				{:else}
+					<b>{username}</b>
+				{/if}
+			</p>
+		</div>
 	</div>
 {/if}
 
@@ -119,5 +169,16 @@
 	.product-container {
 		padding: 20px 30px;
 		font-family: 'Quicksand', sans-serif;
+		display: flex;
+		gap: 30px;
+	}
+	.product-title {
+		margin-bottom: 0;
+	}
+	.product-price {
+		margin-top: 0;
+	}
+	.loader-container {
+		display: inline-block;
 	}
 </style>
