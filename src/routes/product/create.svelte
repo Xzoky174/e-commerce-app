@@ -103,7 +103,15 @@
 			<input required class="input" type="text" bind:value={title} id="title" name="title" />
 
 			<label class="label" for="price">Price ($)</label>
-			<input required class="input" type="number" bind:value={price} id="price" name="price" />
+			<input
+				required
+				class="input"
+				type="number"
+				step="0.01"
+				bind:value={price}
+				id="price"
+				name="price"
+			/>
 
 			<label class="label" for="stock">Stock</label>
 			<input required class="input" type="number" bind:value={stock} id="stock" name="stock" />
