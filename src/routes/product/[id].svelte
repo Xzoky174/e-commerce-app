@@ -5,6 +5,7 @@
 
 	import Loader from '$lib/components/loader.svelte';
 	import Notification from '$lib/components/notification.svelte';
+	import { goto } from '$app/navigation';
 
 	const id = $page.params.id;
 
@@ -99,7 +100,10 @@
 			error = `${status} ${_error.message}`;
 			return;
 		}
-		addedToCart = data.cart ? data.cart.includes(id) : false;
+
+		addedToCart = data.cart.some((/** @type {{id: string, title: string}} */ product) => {
+			return JSON.stringify({ id, title: productInfo?.title }) === JSON.stringify(product);
+		});
 	}
 
 	onMount(async () => {
@@ -126,8 +130,8 @@
 
 			return;
 		} else {
-			checkIfInCart();
 			productInfo = productData;
+			user && checkIfInCart();
 			loadImage();
 			loadUsername();
 
@@ -147,12 +151,20 @@
 				})
 				.subscribe();
 
-			profileSubscription = supabase
-				.from(`profiles:id=eq.${user?.id}`)
-				.on('UPDATE', (payload) => {
-					addedToCart = payload.new.cart ? payload.new.cart.includes(id) : false;
-				})
-				.subscribe();
+			if (user) {
+				profileSubscription = supabase
+					.from(`profiles:id=eq.${user?.id}`)
+					.on('UPDATE', (payload) => {
+						addedToCart = payload.new.cart
+							? payload.new.cart.some((/** @type {{id: string, title: string}} */ product) => {
+									return (
+										JSON.stringify({ id, title: productInfo?.title }) === JSON.stringify(product)
+									);
+							  })
+							: false;
+					})
+					.subscribe();
+			}
 		}
 	});
 
@@ -162,12 +174,17 @@
 	});
 
 	async function addCart() {
+		if (!user) {
+			goto('/auth/signin');
+			return;
+		}
+
 		if (addedToCart) {
 			removingFromCart = true;
 
 			const { error: _error } = await supabase.rpc('remove_array', {
-				id: user?.id,
-				old_element: id
+				id: user.id,
+				old_element: { id, title: productInfo?.title }
 			});
 
 			removingFromCart = false;
@@ -179,8 +196,8 @@
 			addingToCart = true;
 
 			const { error: _error } = await supabase.rpc('append_array', {
-				id: user?.id,
-				new_element: id
+				id: user.id,
+				new_element: { id, title: productInfo?.title }
 			});
 
 			addingToCart = false;
