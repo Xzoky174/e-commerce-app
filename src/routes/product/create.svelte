@@ -135,7 +135,7 @@
 		/>
 	</form>
 {:else}
-	<p class="not-registered center">
+	<p class="not-registered font-raleway center">
 		You are not registered as a seller. Please
 		<a href="mailto:alishariq.m2@gmail.com">Email the Owner</a>
 		to register yourself as a seller.
@@ -146,7 +146,6 @@
 
 <style>
 	.not-registered {
-		font-family: 'Raleway', sans-serif;
 		font-size: 20px;
 	}
 	.form {

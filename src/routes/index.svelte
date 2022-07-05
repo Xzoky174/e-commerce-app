@@ -131,8 +131,8 @@
 		<a href={`/product/${product.id}`}>{product.title} - ${product.price}</a>
 	{/each}
 {:else}
-	<div class="center">
-		<h1 class="no-products">Uh Oh. We Couldn't Find Any Products!</h1>
+	<div class="center font-raleway">
+		<h1>Uh Oh. We Couldn't Find Any Products!</h1>
 		{#if isSeller}
 			<p class="create-product">But you can <a href="/product/create">Create a Product</a>!</p>
 		{/if}
@@ -140,11 +140,7 @@
 {/if}
 
 <style>
-	.no-products {
-		font-family: 'Raleway', sans-serif;
-	}
 	.create-product {
-		font-family: 'Raleway', sans-serif;
 		font-size: 20px;
 	}
 </style>

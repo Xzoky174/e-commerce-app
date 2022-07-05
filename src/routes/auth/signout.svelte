@@ -12,7 +12,7 @@
 	<title>Sign Out</title>
 </svelte:head>
 
-<div class="container">
+<div class="container font-raleway">
 	<div class="sub-container">
 		<h1>Are you sure you want to sign out?</h1>
 
@@ -28,7 +28,6 @@
 		height: 100vh;
 		display: grid;
 		place-items: center;
-		font-family: 'Raleway', sans-serif;
 	}
 	.sub-container {
 		display: flex;

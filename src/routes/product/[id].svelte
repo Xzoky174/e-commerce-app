@@ -216,12 +216,12 @@
 {#if loading}
 	<Loader />
 {:else if notFound}
-	<div class="center not-found">
+	<div class="center font-raleway">
 		<h1>Product Not Found</h1>
 		<a href="/">Go Home</a>
 	</div>
 {:else}
-	<div class="product-container">
+	<div class="product-container font-quicksand">
 		<div class="product-img">
 			{#if loadingImage}
 				<Loader size={30} center={false} />
@@ -269,12 +269,8 @@
 <Notification show={deleted} notification="This Product was Just Deleted" type="error" />
 
 <style>
-	.not-found {
-		font-family: 'Raleway', sans-serif;
-	}
 	.product-container {
 		padding: 20px 30px;
-		font-family: 'Quicksand', sans-serif;
 		display: flex;
 		gap: 30px;
 	}

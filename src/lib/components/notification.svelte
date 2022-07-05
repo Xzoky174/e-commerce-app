@@ -7,14 +7,13 @@
 </script>
 
 {#if show}
-	<div transition:fly={{ y: -200 }} class={type + ' container'}>
+	<div transition:fly={{ y: -200 }} class={type + ' container font-quicksand'}>
 		<p class="notification">{notification}</p>
 	</div>
 {/if}
 
 <style>
 	.container {
-		font-family: 'Quicksand', sans-serif;
 		font-weight: 600;
 		color: #fff;
 		border: 0;
